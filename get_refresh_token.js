@@ -6,61 +6,59 @@ const rl = readline.createInterface({
   output: process.stdout
 });
 
-console.log("Steam Refresh Token Generator – mit E-Mail-Code-Unterstützung\n");
+console.log("Steam Refresh Token Generator\n");
 
 rl.question('Steam Benutzername: ', (accountName) => {
   rl.question('Passwort: ', async (password) => {
-    console.log('\nLogin-Versuch startet... Warte auf Steam-Antwort.');
+    console.log('\nTrying to login - waiting for answer');
 
-    const session = new LoginSession(EAuthTokenPlatformType.SteamClient); // Für ASF/Client-kompatiblen Token
+    const session = new LoginSession(EAuthTokenPlatformType.SteamClient);
 
-    session.loginTimeout = 300000; // 5 Minuten Timeout
+    session.loginTimeout = 300000;
 
     try {
       const result = await session.startWithCredentials({
         accountName: accountName,
         password: password,
-        persistence: 'permanent' // "Remember this device" → langer Refresh-Token
+        persistence: 'permanent'
       });
 
-      console.log('Login-Start abgeschlossen. Action required?', result.actionRequired);
+      console.log('Login started. Action required?', result.actionRequired);
 
       if (result.actionRequired) {
         const emailGuard = result.validActions.find(action => action.type === EAuthSessionGuardType.EmailCode);
 
         if (emailGuard) {
           const emailDomain = emailGuard.detail || 'unbekannt';
-          console.log(`\nSteam hat einen Code per E-Mail an deine Adresse gesendet (endet auf @${emailDomain})`);
-          console.log('→ Öffne dein E-Mail-Postfach (prüfe auch Spam/Ordner "Sicherheit")');
-          console.log('→ Der Code ist 5-stellig (z. B. ABCDE)');
+          console.log(`\nSteam sent you a code to your mail (ends with: @${emailDomain})`);
 
-          rl.question('Gib den Steam Guard E-Mail-Code ein: ', async (code) => {
+          rl.question('Enter Steam Guard Code: ', async (code) => {
             if (!code.trim()) {
-              console.log('Kein Code eingegeben → Abbruch.');
+              console.log('You did not provide a code. Abort.');
               rl.close();
               return;
             }
 
             try {
               await session.submitSteamGuardCode(code.trim());
-              console.log('Code gesendet – warte auf Bestätigung...');
+              console.log('Code sent. waiting for anser...');
               // authenticated-Event sollte jetzt kommen
             } catch (submitErr) {
-              console.error('Fehler beim Senden des Codes:', submitErr.message);
+              console.error('Error sending the code:', submitErr.message);
               rl.close();
             }
           });
         } else {
-          console.log('Anderer Guard-Typ benötigt (z. B. App-Bestätigung). Prüfe Steam-App.');
+          console.log('Wrond guard type.');
           rl.close();
         }
       } else {
-        console.log('Kein zusätzlicher Guard nötig – Token sollte gleich kommen.');
+        console.log('Token should be coming...');
       }
     } catch (err) {
-      console.error('Fehler beim Login-Start:', err.message);
+      console.error('Error at login start:', err.message);
       if (err.message.includes('RateLimitExceeded')) {
-        console.log('Zu viele Versuche → Warte 10–30 Minuten.');
+        console.log('Too many tries → wait 10–30 minutes.');
       }
       rl.close();
       return;
@@ -68,20 +66,19 @@ rl.question('Steam Benutzername: ', (accountName) => {
 
     // Events für den Erfolg / Fehler
     session.on('authenticated', () => {
-      console.log('\n=== ERFOLG ===');
-      console.log('Dein Refresh Token (kopiere den gesamten String!):');
+      console.log('\n=== SUCCESS ===');
+      console.log('Your token is:');
       console.log(session.refreshToken);
-      console.log('\n→ Langer eyJ... String – nutzbar in ASF etc.');
       rl.close();
     });
 
     session.on('error', (err) => {
-      console.error('Fehler während des Prozesses:', err.message);
+      console.error('Error:', err.message);
       rl.close();
     });
 
     session.on('timeout', () => {
-      console.log('Timeout – Code zu spät eingegeben oder nicht bestätigt.');
+      console.log('Timeout.');
       rl.close();
     });
   });
