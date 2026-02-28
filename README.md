@@ -9,6 +9,7 @@ Compatible with ArchiSteamFarm (ASF), node-steam-user, steam.py, etc.
 
 ```bash
 mkdir steam-token-gen && cd steam-token-gen
+create the get_refresh_token.js
 npm init -y
 npm install steam-session
 node get_refresh_token.js
